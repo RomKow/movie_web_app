@@ -1,0 +1,558 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ movie.title }} - Movie Details - MovieWeb App{% endblock %}
+
+{% block styles %}
+<style>
+    .detail-container {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #1c1c1c; /* Slightly lighter background than base / Etwas hellerer Hintergrund als base */
+        border-radius: 8px;
+    }
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 300px 1fr; /* Fixed width for poster, rest flexible / Feste Breite für Poster, Rest flexibel */
+        gap: 30px;
+    }
+    @media (max-width: 768px) {
+        .detail-grid {
+            grid-template-columns: 1fr; /* Single column on small screens / Einspaltig auf kleinen Bildschirmen */
+        }
+        .movie-poster-large {
+            max-width: 80%; /* Poster not too wide on mobile / Poster nicht zu breit auf Mobile */
+            margin-bottom: 20px;
+        }
+    }
+    .movie-poster-large img, .movie-poster-large .placeholder-poster-large {
+        width: 100%;
+        height: auto;
+        max-height: 600px; /* Max height for the poster / Maximale Höhe für das Poster */
+        object-fit: contain;
+        border-radius: 8px;
+        border: 1px solid #333;
+    }
+    .placeholder-poster-large {
+        height: 450px; /* Fixed height for placeholder, matching column width / Feste Höhe für den Placeholder, passend zur Spaltenbreite */
+        background: linear-gradient(45deg, #2c2c2c, #3a3a3a);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ccc;
+        font-size: 1.5rem;
+        text-align: center;
+        padding: 1rem;
+    }
+    .movie-info h1 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 2.5em;
+    }
+    .movie-info .tagline {
+        font-style: italic;
+        color: #aaa;
+        margin-bottom: 20px;
+    }
+    .movie-info p, .movie-info .info-item {
+        margin-bottom: 10px;
+        color: #ddd;
+        line-height: 1.6;
+    }
+    .movie-info .info-item strong {
+        color: #fff;
+        min-width: 120px; /* For better alignment of info labels / Für bessere Ausrichtung der Info-Labels */
+        display: inline-block;
+    }
+    .user-rating-display {
+        font-size: 1.2em;
+        margin: 15px 0;
+    }
+    .user-rating-display .stars {
+        color: #ffc107; /* Golden stars / Goldene Sterne */
+    }
+    .section {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #333;
+    }
+    .section h2 {
+        margin-bottom: 15px;
+    }
+    /* Comments (simplified, can be inspired by movies.html) / Kommentare (vereinfacht, kann von movies.html inspiriert sein) */
+    .comment-item {
+        background: #252525;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        border: 1px solid #383838;
+    }
+    .comment-item p {
+        margin-bottom: 5px;
+    }
+    .comment-item small {
+        color: #888;
+    }
+    .simple-form textarea {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        background-color: #252525;
+        border: 1px solid #444;
+        color: #fff;
+        border-radius: 4px;
+        box-sizing: border-box;
+        min-height: 80px;
+    }
+    .custom-button-small {
+        padding: 8px 12px;
+        font-size: 0.9em;
+    }
+    /* CSS for AI recommendation links / CSS für KI-Empfehlungslinks */
+    #ai-recommendations-result ul li a, 
+    #ai-recommendations-result .recommendation-title a {
+        color: #ffffff !important; /* White / Weiß */
+        text-decoration: none;
+    }
+    #ai-recommendations-result ul li a:hover,
+    #ai-recommendations-result .recommendation-title a:hover {
+        color: #cccccc !important; /* Lighter grey on hover / Helleres Grau beim Hovern */
+        text-decoration: underline;
+    }
+
+    /* Ensure <a> tags styled as custom buttons look correct */
+    /* Sicherstellen, dass <a>-Tags, die als benutzerdefinierte Schaltflächen formatiert sind, korrekt aussehen */
+    a.custom-button.custom-button-ai,
+    a.custom-button.custom-button-ai:link,
+    a.custom-button.custom-button-ai:visited {
+        text-decoration: none !important;
+        color: white !important; /* Assuming button text is white, adjust if base styles differ */
+                                 /* Annahme, dass der Button-Text weiß ist, anpassen, falls Basis-Stile abweichen */
+        display: inline-block !important; /* Crucial for <a> to behave like a button for padding/sizing */
+                                 /* Entscheidend, damit <a> sich für Padding/Größenanpassung wie ein Button verhält */
+        /* Padding, background, border etc. should come from .custom-button and .custom-button-ai definitions */
+        /* Padding, Hintergrund, Rahmen usw. sollten aus den Definitionen von .custom-button und .custom-button-ai stammen */
+        /* We might need to explicitly set padding if it's not inherited correctly for <a> tags */
+        /* Möglicherweise müssen wir Padding explizit setzen, wenn es für <a>-Tags nicht korrekt vererbt wird */
+        /* Example: padding: 10px 15px !important; */
+    }
+    a.custom-button.custom-button-ai:hover,
+    a.custom-button.custom-button-ai:active {
+        text-decoration: none !important;
+        /* Hover/active colors should be handled by the respective .custom-button / .custom-button-ai hover/active styles */
+        /* Hover-/Aktiv-Farben sollten durch die entsprechenden Hover-/Aktiv-Stile von .custom-button / .custom-button-ai behandelt werden */
+        /* If .custom-button-ai has a specific hover color, ensure it's applied */
+        /* Falls .custom-button-ai eine spezifische Hover-Farbe hat, sicherstellen, dass sie angewendet wird */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container" {% if g_is_user_logged_in %}data-current-user-id="{{ g_current_user.id }}"{% endif %}>
+    {# First "Back to Overview" Button / Erster "Zurück zur Übersicht" Button #}
+    {% if g_is_user_logged_in %}
+        <button onclick="window.location.href='{{ url_for('list_user_movies', user_id=g_current_user.id) }}'" class="custom-button" style="margin-bottom: 20px;">&laquo; Back to My Movie List</button>
+    {% else %}
+        <button onclick="window.location.href='{{ url_for('home') }}'" class="custom-button" style="margin-bottom: 20px;">&laquo; Back to Home</button>
+    {% endif %}
+    <div class="detail-grid">
+        <div class="movie-poster-large">
+            {% if movie.poster_url and movie.poster_url != url_for('static', filename='img/no_poster.png') %}
+                <img src="{{ movie.poster_url }}" alt="Poster for {{ movie.title }}">
+            {% else %}
+                <div class="placeholder-poster-large">{{ movie.title }}<br>(No Poster)</div>
+            {% endif %}
+        </div>
+        <div class="movie-info">
+            <h1>{{ movie.title }}</h1>
+            {% if movie.year %}<p class="tagline">{{ movie.year }}</p>{% endif %}
+
+            <p><strong>Director:</strong> {{ movie.director or 'N/A' }}</p>
+            
+            {# --- Start Block for Rating Display and Buttons / Start Block für Bewertungsanzeige und Buttons --- #}
+            <div class="ratings-and-actions-block" style="margin-bottom: 20px;">
+                <div class="user-rating-display" style="margin-bottom: 5px;">
+                    <strong>Community Rating:</strong> 
+                    {% if movie.community_rating is not none and movie.community_rating_count > 0 %}
+                        <span class="stars">
+                        {% set full_comm = movie.community_rating|int %}
+                        {% set half_comm = 1 if (movie.community_rating - full_comm) >= 0.5 else 0 %}
+                        {% set empty_comm = 5 - full_comm - half_comm %}
+                        {{ '★' * full_comm }}{% if half_comm %}½{% endif %}{{ '☆' * empty_comm }}
+                        </span>
+                        ({{ movie.community_rating|round(1) }}/5 from {{ movie.community_rating_count }} vote{{ 's' if movie.community_rating_count != 1 else '' }})
+                    {% else %}
+                        <span class="stars">☆☆☆☆☆</span> (No community ratings yet)
+                    {% endif %}
+                </div>
+    
+                {% if g_is_user_logged_in %}
+                    <div class="user-rating-display" style="margin-bottom: 10px;">
+                        <strong>Your Rating:</strong> 
+                        {% if current_user_rating_for_movie is not none %}
+                            <span class="stars">
+                            {% set full_user = current_user_rating_for_movie|int %}
+                            {% set half_user = 1 if (current_user_rating_for_movie - full_user) >= 0.5 else 0 %}
+                            {% set empty_user = 5 - full_user - half_user %}
+                            {{ '★' * full_user }}{% if half_user %}½{% endif %}{{ '☆' * empty_user }}
+                            </span>
+                            ({{ current_user_rating_for_movie }}/5)
+                        {% else %}
+                            <span class="stars">☆☆☆☆☆</span> (You haven't rated this movie yet)
+                        {% endif %}
+                    </div>
+    
+                    <div class="action-buttons-detail-page" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        {% if is_movie_in_user_list %}
+                            <a href="{{ url_for('update_movie_rating', user_id=g_current_user.id, movie_id=movie.id) }}">
+                                <button class="custom-button" type="button">
+                                    {% if current_user_rating_for_movie is not none %}Edit Your Rating{% else %}Rate This Movie{% endif %}
+                                </button>
+                            </a>
+                            <form method="POST" action="{{ url_for('remove_movie_from_list_explicit', movie_id=movie.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="custom-button custom-button-danger">Remove from My List</button>
+                            </form>
+                        {% else %}
+                            {# Only show 'Add to My List' if not in list / Nur 'Zu meiner Liste hinzufügen' anzeigen, wenn nicht in der Liste #}
+                            <form method="POST" action="{{ url_for('add_movie_to_list', movie_id=movie.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="custom-button">Add to My List</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            {# --- End Block for Rating Display and Buttons / Ende Block für Bewertungsanzeige und Buttons --- #}
+
+            <h3>Movie Details</h3>
+            <p><span class="info-item"><strong>Plot:</strong></span> {{ movie.plot or 'Plot not available.' }}</p>
+            <div class="info-item"><strong>Runtime:</strong> {{ movie.runtime or 'N/A' }}</div>
+            <div class="info-item"><strong>Genre:</strong> {{ movie.genre or 'N/A' }}</div>
+            <div class="info-item"><strong>Actors:</strong> {{ movie.actors or 'N/A' }}</div>
+            <div class="info-item"><strong>Writer(s):</strong> {{ movie.writer or 'N/A' }}</div>
+            <div class="info-item"><strong>Language(s):</strong> {{ movie.language or 'N/A' }}</div> {# movie.language in models, not movie.languages #}
+            <div class="info-item"><strong>Country:</strong> {{ movie.country or 'N/A' }}</div>
+            <div class="info-item"><strong>Awards:</strong> {{ movie.awards or 'N/A' }}</div>
+            {# <div class="info-item"><strong>Metascore:</strong> {{ movie.metascore or 'N/A' }}</div> #}
+            {# <div class="info-item"><strong>Rated (Age): / Altersfreigabe:</strong> {{ movie.rated_omdb or 'N/A' }}</div> #} {# movie.rated_omdb in models #}
+            {# <div class="info-item"><strong>IMDb ID:</strong> {{ movie.imdb_id or 'N/A' }}</div> #}
+        </div>
+    </div>
+
+    {# --- NEW POSITION FOR AI RECOMMENDATIONS / NEUE POSITION FÜR KI-EMPFEHLUNGEN --- #}
+    <div class="section ai-recommendations-section" style="margin-top: 25px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333;">
+        <h2><i class="fa fa-magic" style="margin-right: 8px;"></i>AI Powered Recommendations</h2>
+        <p style="margin-bottom: 12px;">Let our AI suggest 5 similar films based on plot, genre, pacing, intensity, and tone.</p>
+        <button id="fetch-ai-recommendations" class="custom-button custom-button-ai">
+            <i class="fa fa-search" style="margin-right: 5px;"></i>Search Similar Movies with AI
+        </button>
+        <div id="ai-recommendations-result" style="margin-top: 15px;"></div>
+        <div id="ai-selected-movie-details" style="margin-top: 15px; padding: 15px; background-color: #252525; border-radius: 5px; display: none; border: 1px solid #383838;"></div>
+    </div>
+    {# --- END NEW POSITION / ENDE NEUE POSITION --- #}
+
+    <div class="section comments-section">
+        <h2>Comments</h2>
+        <div id="commentsList">
+            {% if movie.comments and movie.comments|length > 0 %}
+                {% for comment in movie.comments|sort(attribute='created_at', reverse=True) %}
+                    <div class="comment-item">
+                        <p><strong>{{ comment.user.name if comment.user else 'Anonymous' }}:</strong></p>
+                        <p>{{ comment.text }}</p>
+                        <small>{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else 'No date' }}</small>
+                        {# Like functionality could be integrated here / Hier könnte die Like-Funktion integriert werden #}
+                        {# <p><small>{{ comment.likes_count }} Likes</small> <button>Like</button></p> #}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p id="no-comments-message">No comments yet. Be the first to write one!</p>
+            {% endif %}
+        </div>
+        
+        {% if g_is_user_logged_in %} {# Only logged-in users can comment / Nur eingeloggte Benutzer können kommentieren #}
+        <div class="review-form simple-form" style="margin-top:20px;">
+            <h4>Write a Comment</h4>
+            {# Div to display comment submission status/errors #}
+            <div id="comment-status-message" style="margin-bottom: 10px; padding: 10px; border-radius: 4px; display: none;"></div>
+
+            <form id="commentForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <textarea name="comment_text" id="comment_text" placeholder="Write your comment here... / Schreibe deinen Kommentar hier..." required></textarea>
+                <button type="submit" class="custom-button custom-button-small">Post Comment</button>
+            </form>
+        </div>
+        {% else %}
+            <p style="margin-top:20px;">You need to be <a href="{{ url_for('home', _anchor='login-section-home') }}" style="color:#ffc107;">logged in</a> to post a comment.</p>
+        {% endif %}
+    </div>
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #333;">
+        {# Second "Back to Overview" Button / Zweiter "Zurück zur Übersicht" Button #}
+        {% if g_is_user_logged_in %}
+            <button onclick="window.location.href='{{ url_for('list_user_movies', user_id=g_current_user.id) }}'" class="custom-button">&laquo; Back to My Movie List</button>
+        {% else %}
+            <button onclick="window.location.href='{{ url_for('home') }}'" class="custom-button">&laquo; Back to Home</button>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# Important to load base scripts like CSRF handling / Wichtig, um Basis-Skripte wie CSRF zu laden #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // AI Recommendations Logic / Logik für KI-Empfehlungen
+    const fetchButton = document.getElementById('fetch-ai-recommendations');
+    const resultDiv = document.getElementById('ai-recommendations-result');
+    const selectedMovieDetailsDiv = document.getElementById('ai-selected-movie-details');
+    const currentMovieId = "{{ movie.id }}"; // Directly get movie ID here for AI recs / Film-ID direkt hier für KI-Empfehlungen holen
+    const currentUserId = document.querySelector('.detail-container').getAttribute('data-current-user-id');
+
+    if (fetchButton && currentMovieId) {
+        fetchButton.addEventListener('click', function() {
+            resultDiv.innerHTML = '<p><i class="fa fa-spinner fa-spin"></i> Fetching recommendations...</p>';
+            selectedMovieDetailsDiv.style.display = 'none';
+            selectedMovieDetailsDiv.innerHTML = '';
+
+            fetch(`/movie/${currentMovieId}/ai_recommendations`)
+                .then(response => {
+                    // Check if response itself is ok (network layer)
+                    if (!response.ok) {
+                        // Try to parse error from body for more specific messages if backend sends JSON error for HTTP error status
+                        return response.json().then(errData => {
+                            throw new Error(errData.message || `HTTP error ${response.status}`);
+                        }).catch(() => {
+                            // Fallback if JSON parsing fails or no message in JSON
+                            throw new Error(`HTTP error ${response.status}`);
+                        });
+                    }
+                    return response.json(); // If response.ok, parse JSON
+                })
+                .then(data => {
+                    // Now, data is the parsed JSON from a successful HTTP response (could still be a logical error from our API)
+                    if (!data.success) { // Check our custom 'success' flag
+                        resultDiv.innerHTML = `<p style="color: red;">Error: ${data.message || 'Failed to fetch recommendations.'}</p>`;
+                        return;
+                    }
+                    if (data.recommendations && data.recommendations.length > 0) {
+                        let html = '<h5>AI Suggested Titles:</h5><ul>';
+                        data.recommendations.forEach(rec => {
+                            html += `<li><a href="#" class="ai-recommendation-link" data-title="${rec.title}" data-year="${rec.year || ''}">${rec.title} ${rec.year ? '(' + rec.year + ')' : ''}</a></li>`;
+                        });
+                        html += '</ul>';
+                        resultDiv.innerHTML = html;
+                        addRecommendationLinkListeners();
+                    } else { // Success true, but no recommendations (or empty message)
+                        resultDiv.innerHTML = `<p>${data.message || 'No recommendations found at this time.'}</p>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching AI recommendations:', error);
+                    // This catch handles network errors from fetch, or errors thrown from the .then() blocks
+                    resultDiv.innerHTML = `<p style="color: red;">Could not fetch AI recommendations: ${error.message}. Please try again later.</p>`;
+                });
+        });
+    }
+
+    function addRecommendationLinkListeners() {
+        document.querySelectorAll('.ai-recommendation-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const title = this.dataset.title;
+                const year = this.dataset.year;
+                fetchAndDisplayMovieData(title, year);
+            });
+        });
+    }
+
+    function fetchAndDisplayMovieData(title, year) {
+        selectedMovieDetailsDiv.style.display = 'block';
+        selectedMovieDetailsDiv.innerHTML = `<p><i class="fa fa-spinner fa-spin"></i> Loading details for ${title}...</p>`;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Step 1: Fetch from OMDb Proxy
+        fetch(`/api/omdb_proxy?title=${encodeURIComponent(title)}${year ? '&year=' + encodeURIComponent(year) : ''}`)
+            .then(response => { // First, check HTTP status and try to parse JSON for more detailed errors
+                if (!response.ok) {
+                    return response.json().then(errData => {
+                        throw new Error(errData.message || `OMDb Proxy HTTP error ${response.status}`);
+                    }).catch(() => { // Fallback if JSON parsing of error fails
+                        throw new Error(`OMDb Proxy HTTP error ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(proxyResponse => {
+                // Now proxyResponse is the parsed JSON from a successful HTTP response from our proxy
+                if (!proxyResponse.success) { // Check our custom 'success' flag from the proxy
+                    selectedMovieDetailsDiv.innerHTML = `<p style="color: red;">Could not retrieve details for "${title}" from OMDb. ${proxyResponse.message || 'Unknown OMDb error (proxy success false).'}</p>`;
+                    return;
+                }
+                
+                // If proxyResponse.success is true, then proxyResponse.data contains the actual OMDb data (or OMDb's error structure if OMDb itself failed logically)
+                const omdbData = proxyResponse.data; 
+
+                if (!omdbData || omdbData.Response !== 'True' || !omdbData.imdbID) { // Check actual OMDb data inside proxyResponse.data
+                    selectedMovieDetailsDiv.innerHTML = `<p style="color: red;">Could not retrieve details for "${title}" from OMDb. ${omdbData && omdbData.Error ? omdbData.Error : 'OMDb data invalid or movie not found.'}</p>`;
+                    return;
+                }
+
+                // Step 2: Check or Create movie in local DB using OMDb data
+                fetch('{{ url_for("api.check_or_create_movie_by_imdb") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(omdbData) // Send full OMDb data (which is proxyResponse.data)
+                })
+                .then(response => { // Check HTTP status for local DB operation
+                    if (!response.ok) {
+                        return response.json().then(errData => {
+                            throw new Error(errData.message || `Local DB op HTTP error ${response.status}`);
+                        }).catch(() => {
+                             throw new Error(`Local DB op HTTP error ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(localDbData => {
+                    if (!localDbData.success || !localDbData.data || !localDbData.data.movie_id) { // Check our custom 'success' and expected data structure
+                        selectedMovieDetailsDiv.innerHTML = `<p style="color: red;">Error processing movie with local database: ${localDbData.message || 'Unknown error (local DB success false or missing data).'}</p>`;
+                        return;
+                    }
+
+                    // Step 3: Display details and provide actions
+                    const local_movie_id = localDbData.data.movie_id;
+                    const movie_page_url = `{{ url_for('movie_page', movie_id=0) }}`.replace('0', local_movie_id);
+                    
+                    let detailsHtml = `<h5 style="margin-bottom: 10px; font-size: 1.1em;">${omdbData.Title} (${omdbData.Year || 'N/A'})</h5>`;
+                    
+                    detailsHtml += `<div style="display:flex; gap:15px;">`;
+                    if (omdbData.Poster && omdbData.Poster !== 'N/A') {
+                        detailsHtml += `<img src="${omdbData.Poster}" alt="Poster for ${omdbData.Title}" style="max-width:100px; height:auto; border-radius:4px;">`;
+                    }
+                    detailsHtml += `<div>`;
+                    detailsHtml += `<p style="font-size:0.9em; margin-bottom:5px;">${omdbData.Plot ? omdbData.Plot.substring(0, 150) + '...' : 'Plot not available.'}</p>`;
+                    
+                    if (currentUserId) { 
+                        detailsHtml += `<button onclick="window.location.href='${movie_page_url}'" class="custom-button custom-button-ai">View Movie Details</button>`;
+                    } else {
+                         detailsHtml += `<p style="font-size:0.9em; margin-bottom: 5px;">Log in to add this movie to your list.</p>`;
+                         detailsHtml += `<button onclick="window.location.href='${movie_page_url}'" class="custom-button custom-button-ai" style="margin-top: 8px;">View Movie Details</button>`;
+                    }
+                    detailsHtml += `</div></div>`;
+                    selectedMovieDetailsDiv.innerHTML = detailsHtml;
+                })
+                .catch(error => {
+                    console.error('Error checking/creating movie in local DB:', error);
+                    selectedMovieDetailsDiv.innerHTML = `<p style="color: red;">Could not process movie with local database: ${error.message}</p>`;
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching from OMDb Proxy:', error);
+                // This catch handles network errors from fetch, or errors thrown from the .then() blocks regarding the proxy call
+                selectedMovieDetailsDiv.innerHTML = `<p style="color: red;">Could not fetch details from OMDb: ${error.message}</p>`;
+            });
+    }
+
+    // Function to format date as YYYY-MM-DD HH:MM
+    // Funktion zur Formatierung des Datums als YYYY-MM-DD HH:MM
+    function formatDate(isoString) {
+        if (!isoString) return 'No date';
+        const date = new Date(isoString);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+
+    // Function to display status messages for comment submission
+    // Funktion zur Anzeige von Statusmeldungen für die Kommentarübermittlung
+    function displayCommentStatus(message, isSuccess) {
+        const statusDiv = document.getElementById('comment-status-message');
+        if (statusDiv) {
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            statusDiv.style.backgroundColor = isSuccess ? '#28a745' : '#dc3545'; // Green for success, Red for error / Grün für Erfolg, Rot für Fehler
+            statusDiv.style.color = 'white';
+            // Hide message after 5 seconds / Nachricht nach 5 Sekunden ausblenden
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    }
+
+    // Submit comment via Fetch API
+    // Kommentar über Fetch-API senden
+    const commentForm = document.getElementById('commentForm');
+    if (commentForm) {
+        commentForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const commentText = document.getElementById('comment_text').value;
+            const csrfToken = this.querySelector('input[name="csrf_token"]').value;
+            const movieId = "{{ movie.id }}"; // Get movie ID from template / Film-ID aus Vorlage holen
+            const url = `/movie/${movieId}/comment/page`;
+
+            // Clear previous status messages / Vorherige Statusmeldungen löschen
+            const statusDiv = document.getElementById('comment-status-message');
+            if (statusDiv) statusDiv.style.display = 'none';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ comment_text: commentText })
+            })
+            .then(response => {
+                // We need to parse JSON regardless of response.ok to get the message
+                // Wir müssen JSON unabhängig von response.ok parsen, um die Nachricht zu erhalten
+                return response.json().then(data => ({ status: response.status, body: data }));
+            })
+            .then(({ status, body }) => {
+                if (status === 201 && body.success) {
+                    displayCommentStatus(body.message || 'Comment added successfully!', true);
+                    document.getElementById('comment_text').value = ''; // Clear textarea / Textarea leeren
+
+                    // Dynamically add the new comment to the list
+                    // Neuen Kommentar dynamisch zur Liste hinzufügen
+                    const commentsList = document.getElementById('commentsList');
+                    const newCommentDiv = document.createElement('div');
+                    newCommentDiv.classList.add('comment-item');
+                    newCommentDiv.innerHTML = `
+                        <p><strong>${body.user_name || 'User'}:</strong></p>
+                        <p>${body.comment_text || ''}</p>
+                        <small>${formatDate(body.created_at)}</small>
+                    `;
+                    // Prepend the new comment so it appears at the top
+                    // Neuen Kommentar voranstellen, damit er oben erscheint
+                    commentsList.insertBefore(newCommentDiv, commentsList.firstChild);
+
+                    // Hide "No comments yet" message if it exists and is visible
+                    // "No comments yet"-Nachricht ausblenden, falls vorhanden und sichtbar
+                    const noCommentsMsg = document.getElementById('no-comments-message');
+                    if (noCommentsMsg) {
+                        noCommentsMsg.style.display = 'none';
+                    }
+                    // No page reload needed / Kein Neuladen der Seite erforderlich
+                } else {
+                    // Handle errors (e.g., 400, 401, 500) or if body.success is false
+                    // Fehlerbehandlung (z.B. 400, 401, 500) oder wenn body.success false ist
+                    displayCommentStatus(body.message || 'Could not submit comment. Please try again.', false);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting comment:', error);
+                displayCommentStatus('An unexpected error occurred. Please try again later.', false);
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 
