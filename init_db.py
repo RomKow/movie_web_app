@@ -1,7 +1,7 @@
 """
 init_db.py
 
-Initializes the database and creates all tables.
+Initializes the database and creates all tables for CineCrowd App
 """
 
 import os
