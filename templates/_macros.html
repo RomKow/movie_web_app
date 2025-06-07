@@ -2,21 +2,13 @@
 {# 
   Renders a movie card.
   - movie_item: Can be either a Movie object (if coming directly from a Movie query)
-                or a UserMovie relation object (where .movie is then the Movie object).
+    or a UserMovie relation object (where .movie is then the Movie object).
   - user_specific_relation: Expects a UserMovie object when viewing a specific user's list
-                              and their specific rating should be displayed.
-                              Not strictly necessary in general views (e.g., Top Movies on Home)
-                              unless user-specific details are also to be shown there (currently not the case).
-
-  Rendert eine Filmkarte.
-  - movie_item: Kann entweder ein Movie-Objekt sein (wenn direkt aus einer Movie-Query kommend)
-                oder ein UserMovie-Relationsobjekt (wo .movie dann das Movie-Objekt ist).
-  - user_specific_relation: Erwartet ein UserMovie-Objekt, wenn es um die Ansicht 
-                              eines bestimmten Benutzers geht und dessen spezifisches Rating angezeigt werden soll.
-                              Wird in der allgemeinen Ansicht (Top-Filme auf Home) nicht unbedingt benötigt,
-                              es sei denn, man möchte dort auch User-spezifische Dinge anzeigen (aktuell nicht der Fall).
+    and their specific rating should be displayed.
+    Not strictly necessary in general views (e.g., Top Movies on Home)
+    unless user-specific details are also to be shown there (currently not the case).
 #}
-    {% set movie = movie_item.Movie if movie_item.Movie else movie_item %} {# Adjustment for different input types / Anpassung für unterschiedliche Übergabetypen #}
+    {% set movie = movie_item.Movie if movie_item.Movie else movie_item %} {# Adjustment for different input types  #}
     {% set user_rating = user_specific_relation.user_rating if user_specific_relation and user_specific_relation.user_rating is not none else None %}
 
     <div class="movie-card">
