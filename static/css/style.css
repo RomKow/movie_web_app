@@ -520,6 +520,7 @@ a:hover {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); /* Feste 320px, sonst flexibel */
   gap: var(--space-lg);                                        /* 24px */
   justify-content: center;                                     /* Zentriert */
+  justify-items: center;
   padding: var(--space-md);                                    /* 16px */
 }
 
